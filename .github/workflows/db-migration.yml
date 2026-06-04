@@ -1,0 +1,33 @@
+name: Database Migration
+
+on:
+  push:
+    paths:
+      - 'database/migrations/**'
+
+jobs:
+
+  migrate:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: flyway/flyway-action@v2
+
+        with:
+
+          url:
+            jdbc:postgresql://aurora-endpoint:5432/postgres
+
+          user: postgres
+
+          password:
+            ${{ secrets.DB_PASSWORD }}
+
+          locations:
+            filesystem:database/migrations
+
+          command: migrate
