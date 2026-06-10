@@ -19,17 +19,33 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Trigger Flyway migration on bastion via SSM
+      - name: Copy migration files to bastion via SSM (pull from repo)
         run: |
           aws ssm send-command \
             --instance-ids "i-0a9fca1bc3032e6db" \
             --document-name "AWS-RunShellScript" \
-            --comment "Run Flyway migrations" \
             --parameters '{
               "commands":[
-                "export DB_PASS=$(aws secretsmanager get-secret-value --secret-id rds!db-31f5b772-0149-41eb-9b75-96cd1617c06e --query SecretString --output text)",
-                "cd /opt/flyway",
-                "flyway -url=jdbc:postgresql://bse-postgres.c1i6eqmie4pa.eu-central-1.rds.amazonaws.com:5432/postgres -user=postgres -password=$DB_PASS -locations=filesystem:/opt/flyway/sql migrate"
+                "rm -rf /tmp/migrations",
+                "mkdir -p /tmp/migrations",
+                "cd /tmp/migrations",
+                "git clone https://github.com/${{ github.repository }}.git repo",
+                "cp -r repo/database/migrations/* /tmp/migrations/"
+              ]
+            }' \
+            --region "eu-central-1"
+
+      - name: Run SQL migrations on RDS via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids "i-0a9fca1bc3032e6db" \
+            --document-name "AWS-RunShellScript" \
+            --parameters '{
+              "commands":[
+                "for file in $(ls /tmp/migrations/*.sql | sort); do",
+                "  echo Running $file",
+                "  psql -h bse-postgres.c1i6eqmie4pa.eu-central-1.rds.amazonaws.com:5432 -U postgres -d postgres -f $file",
+                "done"
               ]
             }' \
             --region "eu-central-1"
