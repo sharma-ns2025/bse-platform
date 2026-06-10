@@ -4,7 +4,7 @@
 resource "aws_db_subnet_group" "rds_subnet_group" {
   name       = "rds-subnet-group"
   # Requires at least two private subnets in different AZs
-  subnet_ids = [aws_subnet.private1.id, aws_subnet.private2.id]
+  subnet_ids = var.subnet_ids
 }
 
 resource "aws_db_instance" "postgres" {
@@ -23,7 +23,7 @@ resource "aws_db_instance" "postgres" {
   manage_master_user_password = true # Auto-generates and secures password via Secrets Manager
 
   db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.name
-  vpc_security_group_ids = [aws_security_group.aurora.id]
+  vpc_security_group_ids = [var.postgres_sg_id]
 
   publicly_accessible    = false
   skip_final_snapshot    = true  # Note: Change to false when going to real production

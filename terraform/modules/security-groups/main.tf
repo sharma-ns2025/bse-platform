@@ -3,7 +3,7 @@
 #########################################
 resource "aws_security_group" "aurora" {
   name   = "postgres-sg"
-  vpc_id = aws_vpc.main.id
+  vpc_id = var.vpc_id
 
   # Prevents dependency deadlocks by removing rules before deletion
   revoke_rules_on_delete = true
@@ -52,7 +52,7 @@ resource "aws_security_group_rule" "egress_all" {
 #########################################
 resource "aws_security_group" "bastion_sg" {
   name   = "bastion-sg"
-  vpc_id = aws_vpc.main.id
+  vpc_id = var.vpc_id
 
   # Prevents dependency deadlocks by removing rules before deletion
   revoke_rules_on_delete = true

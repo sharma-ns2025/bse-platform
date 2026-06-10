@@ -22,12 +22,12 @@ resource "aws_iam_role_policy" "scheduler_policy" {
       {
         Effect   = "Allow"
         Action   = ["rds:StopDBInstance", "rds:StartDBInstance"]
-        Resource = [aws_db_instance.postgres.arn]
+        Resource = [var.db_arn]
       },
       {
         Effect   = "Allow"
         Action   = ["ec2:StopInstances", "ec2:StartInstances"]
-        Resource = [aws_instance.bastion_ssm.arn]
+        Resource = [var.instance_arn]
       }
     ]
   })
@@ -45,7 +45,7 @@ resource "aws_scheduler_schedule" "stop_rds" {
   target {
     arn      = "arn:aws:scheduler:::aws-sdk:rds:stopDBInstance"
     role_arn = aws_iam_role.scheduler_role.arn
-    input    = jsonencode({ DbInstanceIdentifier = aws_db_instance.postgres.identifier })
+    input    = jsonencode({ DbInstanceIdentifier = var.rds_db_name })
   }
 }
 
@@ -58,7 +58,7 @@ resource "aws_scheduler_schedule" "stop_ec2" {
   target {
     arn      = "arn:aws:scheduler:::aws-sdk:ec2:stopInstances"
     role_arn = aws_iam_role.scheduler_role.arn
-    input    = jsonencode({ InstanceIds = [aws_instance.bastion_ssm.id] })
+    input    = jsonencode({ InstanceIds = [var.instance_id] })
   }
 }
 
@@ -74,7 +74,7 @@ resource "aws_scheduler_schedule" "start_rds" {
   target {
     arn      = "arn:aws:scheduler:::aws-sdk:rds:startDBInstance"
     role_arn = aws_iam_role.scheduler_role.arn
-    input    = jsonencode({ DbInstanceIdentifier = aws_db_instance.postgres.identifier })
+    input    = jsonencode({ DbInstanceIdentifier = var.rds_db_name })
   }
 }
 
@@ -87,6 +87,6 @@ resource "aws_scheduler_schedule" "start_ec2" {
   target {
     arn      = "arn:aws:scheduler:::aws-sdk:ec2:startInstances"
     role_arn = aws_iam_role.scheduler_role.arn
-    input    = jsonencode({ InstanceIds = [aws_instance.bastion_ssm.id] })
+    input    = jsonencode({ InstanceIds = [var.instance_id] })
   }
 }
