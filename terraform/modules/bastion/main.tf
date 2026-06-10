@@ -39,6 +39,23 @@ resource "aws_instance" "bastion_ssm" {
   tags = {
     Name = "bastion-private-ssm"
   }
+  
+  user_data = <<-EOF
+    #!/bin/bash
+    # Update system
+    sudo yum update -y
+
+    # Install Java (required for Flyway)
+    sudo yum install -y java-17-amazon-corretto
+
+    # Download and install Flyway
+    wget -qO- https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/10.0.0/flyway-commandline-10.0.0-linux-x64.tar.gz | tar xvz
+    sudo mv flyway-*/ /opt/flyway
+    sudo ln -s /opt/flyway/flyway /usr/local/bin/flyway
+
+    # Create directory for migration scripts
+    mkdir -p /opt/flyway/sql
+  EOF
 }
 
 #########################################
