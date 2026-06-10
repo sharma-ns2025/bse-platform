@@ -15,55 +15,40 @@ jobs:
         working-directory: terraform/environments/dev
     steps:
       - uses: actions/checkout@v4
-
       - uses: hashicorp/setup-terraform@v3
-
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-
       - run: terraform init
-
       - run: terraform validate
-
       - run: terraform plan -out=tfplan
-
-      # Upload the plan so it can be used in the apply job
       - uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: terraform/environments/dev/tfplan
 
-    terraform-apply:
+  terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
     needs: terraform-plan
     defaults:
       run:
         working-directory: terraform/environments/dev
-
     environment:
       name: dev
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: hashicorp/setup-terraform@v3
-
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-
-      # IMPORTANT: reinitialize Terraform in this fresh runner
       - run: terraform init
-
       - uses: actions/download-artifact@v4
         with:
           name: tfplan
           path: terraform/environments/dev
-
       - run: terraform apply "./tfplan"
