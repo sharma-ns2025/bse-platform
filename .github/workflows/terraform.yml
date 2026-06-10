@@ -3,7 +3,7 @@ name: Terraform Dev
 on:
   push:
     paths:
-      - 'terraform/environments/dev/**'
+      - 'terraform/**'
 
 jobs:
   terraform-plan:
