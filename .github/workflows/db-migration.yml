@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'database/migrations/**'
+  workflow_dispatch:
 
 jobs:
   migrate:
