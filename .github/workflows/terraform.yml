@@ -1,38 +1,55 @@
-name: Terraform
+name: Terraform Dev
 
 on:
   push:
     paths:
-      - 'terraform/**'
+      - 'terraform/environments/dev/**'
 
 jobs:
-
-  terraform:
-
+  terraform-plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: terraform/environments/dev
     steps:
+      - uses: actions/checkout@v4
 
-    - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
 
-    - uses: hashicorp/setup-terraform@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - uses: aws-actions/configure-aws-credentials@v4
-      with:
+      - run: terraform init
 
-        aws-access-key-id:
-          ${{ secrets.AWS_ACCESS_KEY_ID }}
+      - run: terraform validate
 
-        aws-secret-access-key:
-          ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - run: terraform plan -out=tfplan
 
-        aws-region:
-          ${{ secrets.AWS_REGION }}
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    defaults:
+      run:
+        working-directory: terraform/environments/dev
+    environment:
+      name: dev
+      # This requires manual approval in GitHub before running
+      # See: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment
+      url: https://github.com/${{ github.repository }}/actions
+    steps:
+      - uses: actions/checkout@v4
 
-    - run: terraform init
+      - uses: hashicorp/setup-terraform@v3
 
-    - run: terraform validate
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - run: terraform plan
-
-    - run: terraform apply -auto-approve
+      - run: terraform apply "tfplan"
