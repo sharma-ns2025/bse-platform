@@ -29,6 +29,12 @@ jobs:
 
       - run: terraform plan -out=tfplan
 
+      # Upload the plan so it can be used in the apply job
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/environments/dev/tfplan
+
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
@@ -38,8 +44,7 @@ jobs:
         working-directory: terraform/environments/dev
     environment:
       name: dev
-      # This requires manual approval in GitHub before running
-      # See: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment
+      # Requires manual approval in GitHub before running
       url: https://github.com/${{ github.repository }}/actions
     steps:
       - uses: actions/checkout@v4
@@ -52,4 +57,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - run: terraform apply "tfplan"
+      # Download the plan artifact from the plan job
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/environments/dev
+
+      # Apply the plan
+      - run: terraform apply "./tfplan"
