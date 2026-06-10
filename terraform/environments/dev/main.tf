@@ -17,6 +17,11 @@ module "vpc_endpoints" {
     module.vpc.private_subnet2_id
   ]
   security_group_id = module.security_groups.bastion_sg_id
+
+  private_route_table_ids = [
+  module.vpc.private_route_table1_id,
+  module.vpc.private_route_table2_id
+]
 }
 
 module "bastion" {

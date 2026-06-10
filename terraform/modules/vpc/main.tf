@@ -15,3 +15,21 @@ resource "aws_subnet" "private2" {
   cidr_block        = "10.0.2.0/24"
   availability_zone = "eu-central-1b"
 }
+
+resource "aws_route_table" "private1" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_route_table" "private2" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_route_table_association" "private1" {
+  subnet_id      = aws_subnet.private1.id
+  route_table_id = aws_route_table.private1.id
+}
+
+resource "aws_route_table_association" "private2" {
+  subnet_id      = aws_subnet.private2.id
+  route_table_id = aws_route_table.private2.id
+}
