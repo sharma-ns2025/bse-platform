@@ -1,1 +1,1 @@
-terraform/modules/**/.terraform/providers/
+terraform/environments/dev/**/.terraform/providers/
