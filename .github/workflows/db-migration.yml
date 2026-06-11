@@ -34,31 +34,30 @@ jobs:
         run: |
           set -e
 
-          # Directory in repo
-          LOCAL_DIR="database/migrations/"
-          # S3 bucket path
-          S3_PATH="s3://$S3_BUCKET/migrations/"
+          LOCAL_DIR="database/migrations"
+          S3_PATH="s3://$S3_BUCKET/migrations"
 
-          # Generate a hash of each file in the local folder
+          # Generate SHA256 hashes of local files
           find "$LOCAL_DIR" -type f -exec sha256sum {} \; > /tmp/local_hashes.txt
 
           # Download previous hash list from S3 (if exists)
           aws s3 cp "$S3_PATH/.hashes.txt" /tmp/s3_hashes.txt || touch /tmp/s3_hashes.txt
 
-          # Compare hashes to detect changed or new files
+          # Compare hashes to detect changed/new files
           while read -r hash file; do
-            s3_file="${file#$LOCAL_DIR}"  # remove local prefix
+            s3_file="${file#$LOCAL_DIR/}"  # remove local folder prefix
             old_hash=$(grep " $s3_file\$" /tmp/s3_hashes.txt | awk '{print $1}')
             if [ "$hash" != "$old_hash" ]; then
               echo "Uploading changed/new file: $s3_file"
-              aws s3 cp "$file" "$S3_PATH$s3_file"
+              aws s3 cp "$file" "$S3_PATH/$s3_file"
             fi
           done < /tmp/local_hashes.txt
 
           # Update hash file in S3
           cp /tmp/local_hashes.txt /tmp/local_hashes.txt.s3ready
-          sed -i "s|$LOCAL_DIR||g" /tmp/local_hashes.txt.s3ready
+          sed -i "s|$LOCAL_DIR/||g" /tmp/local_hashes.txt.s3ready
           aws s3 cp /tmp/local_hashes.txt.s3ready "$S3_PATH/.hashes.txt"
+          
       #- name: Sync migrations to S3
       #  run: |
       #    set -e
