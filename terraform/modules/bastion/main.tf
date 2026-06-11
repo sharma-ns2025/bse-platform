@@ -48,3 +48,25 @@ resource "aws_iam_instance_profile" "bastion_profile" {
   name = "bastion-profile"
   role = aws_iam_role.bastion_ssm_role.name
 }
+
+#########################################
+# For accessing secrets
+#########################################
+resource "aws_iam_role_policy" "secrets_access" {
+  name = "bastion-secrets-access"
+  role = aws_iam_role.bastion_ssm_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        # For production, restrict this to your secret ARN
+        Resource = "*"
+      }
+    ]
+  })
+}
