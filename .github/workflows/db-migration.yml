@@ -30,15 +30,15 @@ jobs:
       # -------------------------------
       # Upload migrations to S3
       # -------------------------------
-      - name: Sync migrations to S3 (incremental)
+      - name: Sync migrations to S3 (incremental, skip .gitkeep)
         run: |
           set -e
 
           LOCAL_DIR="database/migrations"
           S3_PATH="s3://$S3_BUCKET/migrations"
 
-          # Generate SHA256 hashes of local files
-          find "$LOCAL_DIR" -type f -exec sha256sum {} \; > /tmp/local_hashes.txt
+          # Generate SHA256 hashes of local files, skipping .gitkeep
+          find "$LOCAL_DIR" -type f ! -name ".gitkeep" -exec sha256sum {} \; > /tmp/local_hashes.txt
 
           # Download previous hash list from S3 (if exists)
           aws s3 cp "$S3_PATH/.hashes.txt" /tmp/s3_hashes.txt || touch /tmp/s3_hashes.txt
@@ -86,7 +86,7 @@ jobs:
               "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET_ID --query SecretString --output text)",
               "DB_PASSWORD=$(echo \"$SECRET_JSON\" | jq -r '.password')",
               "export PGPASSWORD=$DB_PASSWORD",
-              "for file in /tmp/migrations/*.sql; do echo Running $file; psql -h $DB_HOST -U postgres -d postgres -f \"$file\"; done"
+              "for file in /tmp/migrations/*.sql; do echo Running $file; psql -v ON_ERROR_STOP=1 -h $DB_HOST -U postgres -d postgres -f \"$file\"; done"
             ]
           }
           EOF
