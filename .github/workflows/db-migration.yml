@@ -1,10 +1,10 @@
-name: DB Migration
+name: migrate
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    paths:
+      - 'database/migrations/**'
+  workflow_dispatch:
 
 jobs:
   migrate:
@@ -15,57 +15,42 @@ jobs:
       DB_SECRET_ID: rds!db-31f5b772-0149-41eb-9b75-96cd1617c06e
       DB_HOST: bse-postgres.c1i6eqmie4pa.region.rds.amazonaws.com
       INSTANCE_ID: i-0a9fca1bc3032e6db
-      AWS_REGION: ${{ secrets.AWS_REGION }}
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          repository: sharma-ns2025/bse-platform
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      # ----------------------------
-      # Upload migrations to S3
-      # ----------------------------
       - name: Sync migrations to S3
         run: |
           aws s3 sync database/migrations/ s3://${S3_BUCKET}/migrations/ --delete
 
-      # ----------------------------
-      # Build SSM command safely
-      # ----------------------------
-      - name: Build SSM commands file
+      - name: Build SSM command payload (FIXED)
         run: |
-          cat > commands.json <<'EOF'
+          cat > commands.json <<EOF
           {
             "commands": [
               "set -e",
-              "echo 'Starting migration...'",
-
+              "echo Starting migration...",
               "mkdir -p /tmp/migrations",
-              "aws s3 cp s3://bse-data-bucket/migrations/ /tmp/migrations/ --recursive",
-
-              "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id rds!db-31f5b772-0149-41eb-9b75-96cd1617c06e --query SecretString --output text)",
+              "aws s3 cp s3://${S3_BUCKET}/migrations/ /tmp/migrations/ --recursive",
+              "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id ${DB_SECRET_ID} --query SecretString --output text)",
               "DB_PASSWORD=$(echo \"$SECRET_JSON\" | jq -r '.password')",
-
               "export PGPASSWORD=$DB_PASSWORD",
-
-              "for file in $(ls /tmp/migrations/*.sql | sort); do
-                echo \"Running $file\";
-                psql -h bse-postgres.c1i6eqmie4pa.region.rds.amazonaws.com -U postgres -d postgres -f \"$file\";
-              done"
+              "for file in $(ls /tmp/migrations/*.sql | sort); do echo Running $file; psql -h ${DB_HOST} -U postgres -d postgres -f \"$file\"; done"
             ]
           }
           EOF
 
-      # ----------------------------
-      # Send SSM command
-      # ----------------------------
-      - name: Run migrations on EC2 via SSM
+      - name: Send SSM command
         run: |
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${INSTANCE_ID}" \
@@ -76,12 +61,3 @@ jobs:
 
           echo "Command ID: $COMMAND_ID"
           echo "COMMAND_ID=$COMMAND_ID" >> $GITHUB_ENV
-
-      # ----------------------------
-      # (Optional) Wait for completion
-      # ----------------------------
-      - name: Wait for SSM command result
-        run: |
-          aws ssm wait command-executed \
-            --command-id $COMMAND_ID \
-            --instance-id $INSTANCE_ID
