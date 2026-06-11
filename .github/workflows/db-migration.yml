@@ -40,24 +40,17 @@ jobs:
       # -------------------------------
       - name: Create SSM commands file
         run: |
-          set -e
-
-          cat > commands.json <<EOF
+          cat > commands.json <<'EOF'
           {
             "commands": [
               "set -e",
               "echo Starting migration...",
               "mkdir -p /tmp/migrations",
-
               "aws s3 cp s3://$S3_BUCKET/migrations/ /tmp/migrations/ --recursive",
-
               "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET_ID --query SecretString --output text)",
-
-              "DB_PASSWORD=$(echo \\\"$SECRET_JSON\\\" | jq -r '.password')",
-
+              "DB_PASSWORD=$(echo \"$SECRET_JSON\" | jq -r '.password')",
               "export PGPASSWORD=$DB_PASSWORD",
-
-              "for file in /tmp/migrations/*.sql; do echo Running \\$file; psql -h $DB_HOST -U postgres -d postgres -f \\\"\\$file\\\"; done"
+              "for file in /tmp/migrations/*.sql; do echo Running $file; psql -h $DB_HOST -U postgres -d postgres -f \"$file\"; done"
             ]
           }
           EOF
