@@ -17,6 +17,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";      -- gen_random_uuid(), crypt()
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";       -- trigram index for fast LIKE/search
 CREATE EXTENSION IF NOT EXISTS "btree_gist";    -- GiST index on scalar types (exclusion constraints)
 CREATE EXTENSION IF NOT EXISTS "tablefunc";     -- crosstab() for pivot queries (reporting)
+CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";     -- crosstab() for pivot queries (reporting)
 
 -- ----------------------------------------------------------------------------
 -- SECTION 2: DATABASE ROLES (Least-privilege access per service)
