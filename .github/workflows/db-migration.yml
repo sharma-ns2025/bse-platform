@@ -44,6 +44,9 @@ jobs:
           {
             "commands": [
               "set -e",
+              "S3_BUCKET='bse-data-bucket'",
+              "DB_SECRET_ID='rds!db-31f5b772-0149-41eb-9b75-96cd1617c06e'",
+              "DB_HOST='bse-postgres.c1i6eqmie4pa.region.rds.amazonaws.com'",
               "echo Starting migration...",
               "mkdir -p /tmp/migrations",
               "aws s3 cp s3://$S3_BUCKET/migrations/ /tmp/migrations/ --recursive",
