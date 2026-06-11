@@ -8,7 +8,7 @@ env:
   DB_SECRET_ID: rds!db-31f5b772-0149-41eb-9b75-96cd1617c06e
   DB_HOST: bse-postgres.c1i6eqmie4pa.region.rds.amazonaws.com
   INSTANCE_ID: i-0a9fca1bc3032e6db
-  AWS_REGION: us-east-1
+  AWS_REGION: ${{ secrets.AWS_REGION }}
 
 jobs:
   migrate:
