@@ -34,23 +34,30 @@ jobs:
 
       - name: Execute migrations via SSM
         run: |
-          # Send command to EC2 via SSM
+          # Prepare a JSON file for SSM commands
+          cat > commands.json <<EOF
+          {
+            "commands": [
+              "set -e",
+              "echo Starting migration",
+              "mkdir -p /tmp/migrations",
+              "aws s3 cp s3://${S3_BUCKET}/migrations/ /tmp/migrations/ --recursive",
+              "SECRET=\$(aws secretsmanager get-secret-value --secret-id '${DB_SECRET_ID}' --query SecretString --output text)",
+              "DB_PASSWORD=\$(echo \$SECRET | jq -r .password)",
+              "export PGPASSWORD=\$DB_PASSWORD",
+              "for file in \$(find /tmp/migrations -name '*.sql' | sort); do echo Running \$file; psql -h ${DB_HOST} -U postgres -d postgres -f \$file; done"
+            ]
+          }
+          EOF
+
+          # Send SSM command
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${INSTANCE_ID}" \
             --document-name "AWS-RunShellScript" \
-            --parameters "commands=[
-              \"set -e\",
-              \"echo Starting migration\",
-              \"aws s3 cp s3://${S3_BUCKET}/migrations/ /tmp/migrations/ --recursive\",
-              \"SECRET=$(aws secretsmanager get-secret-value --secret-id '${DB_SECRET_ID}' --query SecretString --output text)\",
-              \"DB_PASSWORD=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])[\\\"password\\\"])' \\\"\$SECRET\\\")\",
-              \"export PGPASSWORD=\\$DB_PASSWORD\",
-              \"for file in \$(find /tmp/migrations -name '*.sql' | sort); do echo Running \$file; psql -h ${DB_HOST} -U postgres -d postgres -f \\\"\$file\\\"; done\"
-            ]" \
+            --parameters file://commands.json \
             --query "Command.CommandId" \
             --output text)
 
-          echo "Command ID: $COMMAND_ID"
           echo "COMMAND_ID=$COMMAND_ID" >> $GITHUB_ENV
 
           # Poll for completion
