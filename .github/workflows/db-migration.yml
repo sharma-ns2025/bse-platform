@@ -28,61 +28,48 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # -------------------------
-      # Upload migrations to S3
-      # -------------------------
-      - name: Upload migrations to S3
+      - name: Upload migration files to S3
         run: |
           aws s3 sync database/migrations/ s3://${S3_BUCKET}/migrations/ --delete
 
-      # -------------------------
-      # Run migrations via SSM (SAFE VERSION)
-      # -------------------------
       - name: Execute migrations via SSM
         run: |
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${INSTANCE_ID}" \
             --document-name "AWS-RunShellScript" \
             --comment "Database migration pipeline" \
-            --parameters "commands=[
-              \"set -e\",
+            --parameters 'commands=[
+              "set -e",
+              "echo Starting migration",
 
-              \"echo 'Starting migration'\",
+              "rm -rf /tmp/migrations",
+              "mkdir -p /tmp/migrations",
+              "aws s3 cp s3://bse-data-bucket/migrations/ /tmp/migrations/ --recursive",
 
-              \"rm -rf /tmp/migrations\",
-              \"mkdir -p /tmp/migrations\",
+              "# Fetch DB password from Secrets Manager and save to temp file",
+              "aws secretsmanager get-secret-value --secret-id '${DB_SECRET_ID}' --query SecretString --output text > /tmp/db_secret.json",
+              "DB_PASSWORD=$(python3 -c '\''import json; print(json.load(open(\"/tmp/db_secret.json\"))['password'])'\'')",
+              "export PGPASSWORD=$DB_PASSWORD",
 
-              \"aws s3 cp s3://bse-data-bucket/migrations/ /tmp/migrations/ --recursive\",
-
-              \"SECRET=$(aws secretsmanager get-secret-value --secret-id ${DB_SECRET_ID} --query SecretString --output text)\",
-
-              \"DB_PASSWORD=$(python3 -c \\\"import json; print(json.loads('''$SECRET''')['password'])\\\")\",
-
-              \"export PGPASSWORD=$DB_PASSWORD\",
-
-              \"for file in $(find /tmp/migrations -name '*.sql' | sort); do
-                  echo Running $file;
-                  psql -h ${DB_HOST} -U postgres -d postgres -f $file;
-              done\"
-            ]" \
+              "# Run all SQL files in order",
+              "for file in $(find /tmp/migrations -name \"*.sql\" | sort); do",
+              "  echo Running $file",
+              "  psql -h ${DB_HOST} -U postgres -d postgres -f $file",
+              "done"
+            ]' \
             --query "Command.CommandId" \
             --output text \
             --region "${AWS_REGION}")
 
           echo "Command ID: $COMMAND_ID"
 
-          # -------------------------
-          # Wait for completion
-          # -------------------------
+          # Wait for the command to finish
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
             --instance-id "${INSTANCE_ID}" \
             --region "${AWS_REGION}"
 
-      # -------------------------
-      # Get execution result
-      # -------------------------
-      - name: Fetch execution result
+      - name: Fetch SSM command output
         run: |
           aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
