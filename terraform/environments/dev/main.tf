@@ -91,7 +91,10 @@ module "alb" {
   alb_name          = "dev-alb"
   target_port       = 8080
   vpc_id            = module.vpc.vpc_id
-  subnet_ids        = [module.vpc.private_subnet1_id, module.vpc.private_subnet2_id]
+  subnet_ids = [
+  module.vpc.public_subnet1_id,
+  module.vpc.public_subnet2_id
+]
   security_group_id = module.security_groups.bastion_sg_id
 }
 
@@ -107,8 +110,8 @@ module "ecs_service" {
   cluster_id         = module.ecs_cluster.cluster_id
 
   desired_count      = 1
-  cpu                = "256"
-  memory             = "512"
+  cpu                = 256
+  memory             = 512
   environment        = []
 
   container_name     = "app"
