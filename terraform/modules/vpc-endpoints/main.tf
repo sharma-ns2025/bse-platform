@@ -13,7 +13,9 @@ resource "aws_security_group" "vpc_endpoints_sg" {
     to_port     = 443
     protocol    = "tcp"
     # Allow HTTPS traffic from anywhere within the VPC
-    cidr_blocks = ["10.0.0.0/16"] 
+    #cidr_blocks = ["10.0.0.0/16"] 
+    
+    security_groups = [var.ecs_security_group_id]
   }
 }
 

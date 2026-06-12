@@ -10,3 +10,7 @@ variable "private_route_table_ids" {
   description = "List of private route table IDs for S3 Gateway Endpoint"
   type        = list(string)
 }
+
+variable "ecs_security_group_id" {
+  type = string
+}

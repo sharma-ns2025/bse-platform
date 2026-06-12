@@ -22,6 +22,8 @@ module "vpc_endpoints" {
   module.vpc.private_route_table1_id,
   module.vpc.private_route_table2_id
 ]
+
+  ecs_security_group_id = module.security_groups.ecs_sg_id
 }
 
 module "bastion" {
