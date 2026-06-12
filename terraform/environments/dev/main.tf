@@ -130,7 +130,9 @@ module "ecs_services" {
   memory             = each.value.memory
   container_name     = each.value.name
   container_port     = 8080
-  image              = module.ecr.repository_url
+  # Use a placeholder image listening on 8080 for initial Terraform provisioning.
+  # Your CI/CD pipeline should later deploy your actual application image to ECR and ECS.
+  image              = "jmalloc/echo-server:latest"
   task_family        = "${each.value.name}-task-family"
   execution_role_arn = module.ecs_cluster.execution_role_arn
   security_group_id  = module.security_groups.ecs_sg_id
