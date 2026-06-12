@@ -223,6 +223,67 @@ DO $$ BEGIN
   CREATE TYPE staker_status_enum AS ENUM ('pending_verification', 'active', 'paused', 'suspended', 'inactive');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+-- Blockchain transaction status (for crypto deposits/withdrawals)
+DO $$ BEGIN
+  CREATE TYPE blockchain_status_enum AS ENUM (
+    'initiated',         -- user requested deposit
+    'pending',           -- transaction sent to blockchain, awaiting confirmation
+    'confirmed_1',       -- 1 blockchain confirmation received
+    'confirmed_3',       -- 3 confirmations (most crypto requires this)
+    'confirmed_6',       -- 6 confirmations (Bitcoin standard)
+    'settled',           -- fully settled, user has funds
+    'failed',            -- blockchain transaction failed
+    'cancelled'          -- user/system cancelled the transaction
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Supported blockchain networks for deposits/withdrawals (USDT on Ethereum, BTC on Bitcoin, etc.)
+DO $$ BEGIN
+  CREATE TYPE blockchain_network_enum AS ENUM (
+    'ethereum',          -- Ethereum mainnet (ERC-20 USDT, ETH)
+    'bitcoin',           -- Bitcoin mainnet
+    'polygon',           -- Polygon (ERC-20 USDT on Polygon)
+    'arbitrum',          -- Arbitrum (ERC-20 USDT on Arbitrum)
+    'optimism',          -- Optimism (ERC-20 USDT on Optimism)
+    'bsc'                -- Binance Smart Chain (BEP-20 USDT)
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Crypto currency to blockchain mapping
+DO $$ BEGIN
+  CREATE TYPE crypto_network_pair_enum AS ENUM (
+    'eth_ethereum',      -- ETH on Ethereum mainnet
+    'btc_bitcoin',       -- BTC on Bitcoin mainnet
+    'usdt_ethereum',     -- USDT (ERC-20) on Ethereum
+    'usdt_polygon',      -- USDT on Polygon
+    'usdt_arbitrum',     -- USDT on Arbitrum
+    'usdt_optimism',     -- USDT on Optimism
+    'usdt_bsc'           -- USDT (BEP-20) on BSC
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Deposit/withdrawal confirmation status (how many confirmations needed)
+DO $$ BEGIN
+  CREATE TYPE confirmation_status_enum AS ENUM (
+    'awaiting_broadcast',   -- transaction not yet on blockchain
+    'in_mempool',           -- transaction in mempool, awaiting inclusion
+    'confirmed',            -- meets minimum confirmations for settlement
+    'reconciled'            -- matched against exchange records
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Whale staker rebalance reasons
+DO $$ BEGIN
+  CREATE TYPE rebalance_reason_enum AS ENUM (
+    'daily_sync',           -- periodic daily reconciliation with Alpaca
+    'manual_rebalance',     -- staker manually adjusted
+    'auto_demand_adjust',   -- auto-adjustment due to platform demand
+    'emergency_halt',       -- emergency halt/safety pause
+    'maintenance',          -- platform maintenance rebalance
+    'position_liquidation'  -- position was liquidated
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- ----------------------------------------------------------------------------
 -- SECTION 6: SHARED UTILITY FUNCTION
 -- Reusable trigger function for auto-updating 'updated_at' columns.

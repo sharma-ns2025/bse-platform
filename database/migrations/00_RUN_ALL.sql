@@ -6,9 +6,8 @@
 -- PREREQUISITES (do these BEFORE running this file):
 --   1. Create Aurora PostgreSQL cluster (see AWS_SETUP_GUIDE below)
 --   2. Connect as master user: psql -h <endpoint> -U postgres -d postgres
---   3. Create the database: CREATE DATABASE bse;
---   4. Switch to it: \c bse
---   5. Run this file: \i 00_RUN_ALL.sql
+--   3. This script will CREATE DATABASE bse if it doesn't exist
+--   4. Run this file: \i 00_RUN_ALL.sql
 --
 -- ESTIMATED RUNTIME: ~15-30 seconds on a fresh DB
 --
@@ -72,45 +71,62 @@
 \echo 'BSE Database Setup Starting...'
 \echo '============================================================'
 
+-- ── CREATE DATABASE IF NOT EXISTS ───────────────────────────────────────────
+\echo '[0/10] Creating database bse if not exists...'
+CREATE DATABASE IF NOT EXISTS bse;
+\c bse
+
 -- ── 00: Extensions, schemas, roles, shared enums ─────────────────────────
-\echo '[1/9] Master setup: schemas, roles, enums...'
-\i schemas/00_master_setup.sql
+\echo '[1/10] Master setup: schemas, roles, enums...'
+\i 00_master_setup.sql
 
 -- ── 01: Auth schema (Firebase users, devices, wallets, payment methods) ──
-\echo '[2/9] Auth schema...'
-\i schemas/01_auth_schema.sql
+\echo '[2/10] Auth schema...'
+\i 01_auth_schema.sql
 
 -- ── 02: Core schema (stock tokens, NAV history, watchlist, price feed) ───
-\echo '[3/9] Core schema...'
-\i schemas/02_core_schema.sql
+\echo '[3/13] Core schema...'
+\i 02_core_schema.sql
+
+-- ── 02a: Core schema ENHANCEMENTS (expense ratio, price feed cache) ────────
+\echo '[3b/13] Core schema enhancements (expense ratio, price feed)...'
+\i 02a_core_expense_ratio_enhancements.sql
 
 -- ── 03: Wallet schema (accounts, deposits, withdrawals, ledger) ───────────
-\echo '[4/9] Wallet schema...'
-\i schemas/03_wallet_schema.sql
+\echo '[4/13] Wallet schema...'
+\i 03_wallet_schema.sql
+
+-- ── 03a: Wallet schema ENHANCEMENTS (crypto deposits, confirmations) ──────
+\echo '[4b/13] Wallet schema enhancements (blockchain crypto tracking)...'
+\i 03a_wallet_crypto_deposits_enhancements.sql
 
 -- ── 04: Trading schema (orders, holdings, positions, snapshots) ───────────
-\echo '[5/9] Trading schema...'
-\i schemas/04_trading_schema.sql
+\echo '[5/13] Trading schema...'
+\i 04_trading_schema.sql
 
 -- ── 05: Staking + Fund + Audit schemas ────────────────────────────────────
-\echo '[6/9] Staking, Fund, Audit schemas...'
-\i schemas/05_staking_fund_audit_schemas.sql
+\echo '[6/13] Staking, Fund, Audit schemas...'
+\i 05_staking_fund_audit_schemas.sql
+
+-- ── 05a: Staking schema ENHANCEMENTS (rebalance audit trail) ──────────────
+\echo '[6b/13] Staking schema enhancements (whale staker rebalance history)...'
+\i 05a_staking_rebalance_enhancements.sql
 
 -- ── 06: API views (one view per Figma screen / API endpoint) ──────────────
-\echo '[7/9] API views...'
-\i views/06_api_views.sql
+\echo '[7/13] API views...'
+\i 06_api_views.sql
 
 -- ── 07: Seed data (stock tokens) + Mock data Part 1 (users, wallets) ──────
-\echo '[8/9] Seed and mock data (part 1)...'
-\i seeds/07_seed_and_mock_data.sql
+\echo '[8/13] Seed and mock data (part 1)...'
+\i 07_seed_and_mock_data.sql
 
 -- ── 08: Stored functions (ACID ops, NAV engine, reconcile) ────────────────
-\echo '[9/10] Stored functions...'
-\i functions/08_functions.sql
+\echo '[9/13] Stored functions...'
+\i 08_functions.sql
 
 -- ── 09: Mock data Part 2 (orders, stakers, ledger, price feed) ────────────
-\echo '[10/10] Mock data (part 2)...'
-\i seeds/09_mock_data_part2.sql
+\echo '[10/13] Mock data (part 2)...'
+\i 09_mock_data_part2.sql
 
 -- ============================================================================
 -- POST-SETUP VERIFICATION
@@ -118,6 +134,17 @@
 -- ============================================================================
 \echo ''
 \echo '============================================================'
+\echo 'VERIFICATION: Checking DATABASE...'
+\echo '============================================================'
+SELECT current_database() AS connected_to_database;
+
+\echo ''
+\echo 'VERIFICATION: Checking SCHEMAS...'
+SELECT schema_name FROM information_schema.schemata 
+WHERE schema_name IN ('auth','core','wallet','trading','staking','fund','audit')
+ORDER BY schema_name;
+
+\echo ''
 \echo 'VERIFICATION: Table row counts'
 \echo '============================================================'
 
@@ -130,19 +157,31 @@ WHERE schemaname IN ('auth','core','wallet','trading','staking','fund','audit')
 ORDER BY schemaname, relname;
 
 \echo ''
-\echo 'VERIFICATION: Views created'
-SELECT schemaname, viewname
-FROM pg_views
-WHERE schemaname IN ('auth','core','wallet','trading')
-ORDER BY schemaname, viewname;
-
-\echo ''
-\echo 'VERIFICATION: Functions created'
+\echo 'VERIFICATION: Functions & stored procedures created'
 SELECT routine_schema, routine_name, routine_type
 FROM information_schema.routines
 WHERE routine_schema IN ('auth','core','wallet','trading','staking','audit','public')
   AND routine_type IN ('FUNCTION','PROCEDURE')
 ORDER BY routine_schema, routine_name;
+
+\echo ''
+\echo 'VERIFICATION: Custom types (enums) created'
+SELECT t.typname AS type_name, e.enumlabel AS enum_value
+FROM pg_type t
+JOIN pg_enum e ON t.oid = e.enumtypid
+WHERE t.typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+ORDER BY t.typname, e.enumlabel;
+
+\echo ''
+\echo 'VERIFICATION: Enhanced tables (crypto, expense ratio, rebalance tracking)'
+SELECT schemaname, tablename FROM pg_tables
+WHERE tablename IN (
+  'deposit_confirmations', 'crypto_address_deposits', 'deposit_failures',
+  'withdrawal_confirmations', 'transaction_fee_adjustments',
+  'expense_ratio_history', 'price_feed_cache', 'expense_ratio_adjustments',
+  'rebalance_history', 'alpaca_sync_logs', 'position_snapshots', 'reward_calculation_logs'
+)
+ORDER BY schemaname, tablename;
 
 \echo ''
 \echo 'VERIFICATION: Audit partitions'
