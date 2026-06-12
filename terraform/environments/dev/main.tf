@@ -100,40 +100,79 @@ module "alb" {
   security_group_id = module.security_groups.alb_sg_id
 }
 
-module "ecr" {
+module "ecr_admin" {
   source    = "../../modules/ecr"
-  repo_name = "dev-app"
+  repo_name = "admin-service"
+}
+
+module "ecr_auth" {
+  source    = "../../modules/ecr"
+  repo_name = "auth-service"
+}
+
+module "ecr_user" {
+  source    = "../../modules/ecr"
+  repo_name = "user-service"
+}
+
+module "ecr_wallet" {
+  source    = "../../modules/ecr"
+  repo_name = "wallet-service"
+}
+
+module "ecr_trading" {
+  source    = "../../modules/ecr"
+  repo_name = "trading-engine"
+}
+
+module "ecr_notification" {
+  source    = "../../modules/ecr"
+  repo_name = "notification-service"
 }
 
 # ECS Services with Auto Scaling
 locals {
   ecs_services = [
-    { name = "service-1", cpu = 256, memory = 512 },
-    { name = "service-2", cpu = 256, memory = 512 },
-    { name = "service-3", cpu = 256, memory = 512 },
-    { name = "service-4", cpu = 256, memory = 512 },
-    { name = "service-5", cpu = 256, memory = 512 },
-    { name = "service-6", cpu = 256, memory = 512 },
-    { name = "service-7", cpu = 256, memory = 512 }
+    { name = "admin-service", cpu = 256, memory = 512, ecr_module = "ecr_admin" },
+    { name = "auth-service", cpu = 256, memory = 512, ecr_module = "ecr_auth" },
+    { name = "user-service", cpu = 256, memory = 512, ecr_module = "ecr_user" },
+    { name = "wallet-service", cpu = 256, memory = 512, ecr_module = "ecr_wallet" },
+    { name = "trading-engine", cpu = 256, memory = 512, ecr_module = "ecr_trading" },
+    { name = "notification-service", cpu = 256, memory = 512, ecr_module = "ecr_notification" }
   ]
 }
 
 module "ecs_services" {
   source = "../../modules/ecs-service"
-  
-  for_each = { for s in local.ecs_services : s.name => s }
 
-  service_name       = each.value.name
+  for_each = {
+    "admin-service"        = { cpu = 256, memory = 512 }
+    "auth-service"         = { cpu = 256, memory = 512 }
+    "user-service"         = { cpu = 256, memory = 512 }
+    "wallet-service"       = { cpu = 256, memory = 512 }
+    "trading-engine"       = { cpu = 256, memory = 512 }
+    "notification-service" = { cpu = 256, memory = 512 }
+  }
+
+  service_name       = each.key
   cluster_id         = module.ecs_cluster.cluster_arn
   desired_count      = 1
   cpu                = each.value.cpu
   memory             = each.value.memory
-  container_name     = each.value.name
+
+  container_name     = each.key
   container_port     = 8080
-  # Use a placeholder image listening on 8080 for initial Terraform provisioning.
-  # Your CI/CD pipeline should later deploy your actual application image to ECR and ECS.
-  image              = "jmalloc/echo-server:latest"
-  task_family        = "${each.value.name}-task-family"
+
+  image = (
+    each.key == "admin-service"        ? module.ecr_admin.repository_url :
+    each.key == "auth-service"         ? module.ecr_auth.repository_url :
+    each.key == "user-service"         ? module.ecr_user.repository_url :
+    each.key == "wallet-service"       ? module.ecr_wallet.repository_url :
+    each.key == "trading-engine"       ? module.ecr_trading.repository_url :
+    module.ecr_notification.repository_url
+  )
+
+  task_family        = "${each.key}-task-family"
   execution_role_arn = module.ecs_cluster.execution_role_arn
   security_group_id  = module.security_groups.ecs_sg_id
   target_group_arn   = module.alb.target_group_arn
