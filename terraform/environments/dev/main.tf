@@ -88,13 +88,13 @@ module "ecs_cluster" {
 
 module "alb" {
   source = "../../modules/alb"
-  alb_name          = "dev-alb"
-  target_port       = 8080
-  vpc_id            = module.vpc.vpc_id
+  alb_name    = "dev-alb"
+  target_port = 8080
+  vpc_id      = module.vpc.vpc_id
   subnet_ids = [
-  module.vpc.public_subnet1_id,
-  module.vpc.public_subnet2_id
-]
+    module.vpc.public_subnet1_id,
+    module.vpc.public_subnet2_id
+  ]
   security_group_id = module.security_groups.alb_sg_id
 }
 
@@ -103,29 +103,36 @@ module "ecr" {
   repo_name = "dev-app"
 }
 
-module "ecs_service" {
+# ECS Services with Auto Scaling
+locals {
+  ecs_services = [
+    { name = "service-1", cpu = 256, memory = 512 },
+    { name = "service-2", cpu = 256, memory = 512 },
+    { name = "service-3", cpu = 256, memory = 512 },
+    { name = "service-4", cpu = 256, memory = 512 },
+    { name = "service-5", cpu = 256, memory = 512 },
+    { name = "service-6", cpu = 256, memory = 512 },
+    { name = "service-7", cpu = 256, memory = 512 }
+  ]
+}
+
+module "ecs_services" {
   source = "../../modules/ecs-service"
+  
+  for_each = { for s in local.ecs_services : s.name => s }
 
-  service_name       = "dev-ecs-service"
-  cluster_id         = module.ecs_cluster.cluster_id
-
+  service_name       = each.value.name
+  cluster_id         = module.ecs_cluster.cluster_arn
   desired_count      = 1
-  cpu                = 256
-  memory             = 512
-  environment        = []
-
-  container_name     = "app"
+  cpu                = each.value.cpu
+  memory             = each.value.memory
+  container_name     = each.value.name
   container_port     = 8080
   image              = module.ecr.repository_url
-  task_family        = "dev-task-family"
-
+  task_family        = "${each.value.name}-task-family"
   execution_role_arn = module.ecs_cluster.execution_role_arn
-  security_group_id = module.security_groups.ecs_sg_id
-
+  security_group_id  = module.security_groups.ecs_sg_id
   target_group_arn   = module.alb.target_group_arn
-
-  subnet_ids         = [
-    module.vpc.private_subnet1_id,
-    module.vpc.private_subnet2_id
-  ]
+  subnet_ids         = [module.vpc.private_subnet1_id, module.vpc.private_subnet2_id]
+  cluster_name       = module.ecs_cluster.cluster_name
 }
