@@ -71,16 +71,9 @@
 \echo 'BSE Database Setup Starting...'
 \echo '============================================================'
 
--- ── CREATE DATABASE IF NOT EXISTS ───────────────────────────────────────────
-\echo '[0/10] Creating database bse if not exists...'
-DO $$
-BEGIN
-  CREATE DATABASE bse;
-  RAISE NOTICE 'Database bse created successfully';
-EXCEPTION WHEN duplicate_database THEN
-  RAISE NOTICE 'Database bse already exists, skipping creation';
-END $$;
-
+-- ── CONNECT TO BSE DATABASE ────────────────────────────────────────────────
+-- Database creation is handled by shell script before running psql
+\echo '[0/13] Connecting to database bse...'
 \c bse
 
 -- ── 00: Extensions, schemas, roles, shared enums ─────────────────────────
