@@ -73,7 +73,14 @@
 
 -- ── CREATE DATABASE IF NOT EXISTS ───────────────────────────────────────────
 \echo '[0/10] Creating database bse if not exists...'
-CREATE DATABASE IF NOT EXISTS bse;
+DO $$
+BEGIN
+  CREATE DATABASE bse;
+  RAISE NOTICE 'Database bse created successfully';
+EXCEPTION WHEN duplicate_database THEN
+  RAISE NOTICE 'Database bse already exists, skipping creation';
+END $$;
+
 \c bse
 
 -- ── 00: Extensions, schemas, roles, shared enums ─────────────────────────

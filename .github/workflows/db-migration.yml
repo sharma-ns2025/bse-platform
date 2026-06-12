@@ -80,13 +80,15 @@ jobs:
               "S3_BUCKET='bse-data-bucket'",
               "DB_SECRET_ID='rds!db-31f5b772-0149-41eb-9b75-96cd1617c06e'",
               "DB_HOST='bse-postgres.c1i6eqmie4pa.eu-central-1.rds.amazonaws.com'",
-              "echo Starting migration...",
+              "echo 'Starting BSE database migration...'",
               "mkdir -p /tmp/migrations",
               "aws s3 cp s3://$S3_BUCKET/migrations/ /tmp/migrations/ --recursive",
               "SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET_ID --query SecretString --output text)",
               "DB_PASSWORD=$(echo \"$SECRET_JSON\" | jq -r '.password')",
               "export PGPASSWORD=$DB_PASSWORD",
-              "for file in /tmp/migrations/*.sql; do echo Running $file; psql -v ON_ERROR_STOP=1 -h $DB_HOST -U postgres -d postgres -f \"$file\"; done"
+              "cd /tmp/migrations",
+              "echo 'Running master migration script (00_RUN_ALL.sql)...'",
+              "psql -v ON_ERROR_STOP=1 -h $DB_HOST -U postgres -f 00_RUN_ALL.sql"
             ]
           }
           EOF
