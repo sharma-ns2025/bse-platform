@@ -95,7 +95,7 @@ module "alb" {
   module.vpc.public_subnet1_id,
   module.vpc.public_subnet2_id
 ]
-  security_group_id = module.security_groups.bastion_sg_id
+  security_group_id = module.security_groups.alb_sg_id
 }
 
 module "ecr" {
@@ -120,7 +120,7 @@ module "ecs_service" {
   task_family        = "dev-task-family"
 
   execution_role_arn = module.ecs_cluster.execution_role_arn
-  security_group_id  = module.security_groups.bastion_sg_id
+  security_group_id = module.security_groups.ecs_sg_id
 
   target_group_arn   = module.alb.target_group_arn
 
